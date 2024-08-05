@@ -1,4 +1,4 @@
-name: Docker Images Private
+name: Docker
 
 on:
   workflow_dispatch:
@@ -137,8 +137,14 @@ jobs:
             
               # 将@sha256:等字符删除
               image_name_tag="${image_name_tag%%@*}"
-              new_image="$PRIVATE_REGISTRY/$platform_prefix$name_space_prefix$image_name_tag"
-              latest_image="$PRIVATE_REGISTRY/$platform_prefix$name_space_prefix$image_name:latest"
+              # 确保包含命名空间
+              if [[ -z "$name_space" ]]; then
+                  new_image="$PRIVATE_REGISTRY/library/$platform_prefix$name_space_prefix$image_name_tag"
+                  latest_image="$PRIVATE_REGISTRY/library/$platform_prefix$name_space_prefix$image_name:latest"
+              else:
+                  new_image="$PRIVATE_REGISTRY/$name_space_prefix$image_name_tag"
+                  latest_image="$PRIVATE_REGISTRY/$name_space_prefix$image_name:latest"
+              fi
             
               echo "docker tag $image $new_image"
               docker tag $image $new_image
