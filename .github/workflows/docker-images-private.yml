@@ -1,4 +1,4 @@
-name: Docker Images Private
+name: Docker
 
 on:
   workflow_dispatch:
@@ -55,6 +55,10 @@ jobs:
           echo "{\"insecure-registries\":[\"$PRIVATE_REGISTRY\"]}" | sudo tee /etc/docker/daemon.json
           sudo systemctl restart docker
 
+      - name: Login to Harbor
+        run: |
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login $PRIVATE_REGISTRY -u "${{ secrets.HARBOR_USERNAME }}" --password-stdin
+
       - name: Build and push image to private registry
         run: |
           # 数据预处理,判断镜像是否重名
@@ -97,7 +101,7 @@ jobs:
               fi       
           done < images.txt
           
-          while IFS= read -r line || [ -n "$line" ]; do
+          while IFS= read -r line || [ -n "$line" ]]; do
           
               # 忽略空行与注释
               [[ -z "$line" ]] && continue
@@ -137,8 +141,15 @@ jobs:
             
               # 将@sha256:等字符删除
               image_name_tag="${image_name_tag%%@*}"
-              new_image="$PRIVATE_REGISTRY/$platform_prefix$name_space_prefix$image_name_tag"
-              latest_image="$PRIVATE_REGISTRY/$platform_prefix$name_space_prefix$image_name:latest"
+              
+              # 确保包含命名空间，默认推送到 library
+              if [[ -z "$name_space" ]]; then
+                  new_image="$PRIVATE_REGISTRY/library/$platform_prefix$name_space_prefix$image_name_tag"
+                  latest_image="$PRIVATE_REGISTRY/library/$platform_prefix$name_space_prefix$image_name:latest"
+              else
+                  new_image="$PRIVATE_REGISTRY/$name_space/$platform_prefix$name_space_prefix$image_name_tag"
+                  latest_image="$PRIVATE_REGISTRY/$name_space/$platform_prefix$name_space_prefix$image_name:latest"
+              fi
             
               echo "docker tag $image $new_image"
               docker tag $image $new_image
